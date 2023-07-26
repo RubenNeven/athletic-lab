@@ -4,6 +4,16 @@ SET NAMES 'UTF8MB4';
 
 USE athletic_lab;
 
+DROP TABLE IF EXISTS UserRoles;
+
+DROP TABLE IF EXISTS UserEvents;
+
+DROP TABLE IF EXISTS AccountVerifications;
+
+DROP TABLE IF EXISTS ResetPasswordVerifications;
+
+DROP TABLE IF EXISTS TwoFactorVerifications;
+
 DROP TABLE IF EXISTS Users;
 
 CREATE TABLE Users
@@ -35,7 +45,7 @@ CREATE TABLE Roles
     CONSTRAINT UQ_Roles_Name UNIQUE (name)
 );
 
-DROP TABLE IF EXISTS UserRoles;
+
 
 CREATE TABLE UserRoles
 (
@@ -61,7 +71,7 @@ CREATE TABLE Events
     CONSTRAINT UQ_Events_Type UNIQUE (type)
 );
 
-DROP TABLE IF EXISTS UserEvents;
+
 
 CREATE TABLE UserEvents
 (
@@ -76,7 +86,7 @@ CREATE TABLE UserEvents
 );
 
 
-DROP TABLE IF EXISTS AccountVerifications;
+
 
 CREATE TABLE AccountVerifications
 (
@@ -89,7 +99,6 @@ CREATE TABLE AccountVerifications
     CONSTRAINT UQ_AccountVerifications_Url UNIQUE (url)
 );
 
-DROP TABLE IF EXISTS ResetPasswordVerifications;
 
 CREATE TABLE ResetPasswordVerifications
 (
@@ -102,7 +111,7 @@ CREATE TABLE ResetPasswordVerifications
     CONSTRAINT UQ_ResetPasswordVerifications_Url UNIQUE (url)
 );
 
-DROP TABLE IF EXISTS TwoFactorVerifications;
+
 
 CREATE TABLE TwoFactorVerifications
 (
