@@ -1,5 +1,6 @@
 package com.ruben.athleticlab.dtomapper;
 
+import com.ruben.athleticlab.domain.Role;
 import com.ruben.athleticlab.domain.User;
 import com.ruben.athleticlab.dto.UserDTO;
 import org.springframework.beans.BeanUtils;
@@ -8,9 +9,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserDTOMapper {
 
-    public static UserDTO fromUser(User user){
+    public static UserDTO fromUser(User user, Role role){
         UserDTO userDTO = new UserDTO();
         BeanUtils.copyProperties(user, userDTO);
+        userDTO.setRoleName(role.getName());
+        userDTO.setPermissions(role.getPermission());
         return userDTO;
     }
 

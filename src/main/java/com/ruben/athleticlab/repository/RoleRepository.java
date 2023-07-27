@@ -5,7 +5,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 
-@Repository
+
 public interface RoleRepository <T extends Role> {
 
     /** Basic CRUD operations */

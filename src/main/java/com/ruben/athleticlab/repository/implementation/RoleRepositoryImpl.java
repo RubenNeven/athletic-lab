@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.Map;
+import static java.util.Map.of;
 import java.util.Objects;
 
 import static com.ruben.athleticlab.enumeration.RoleType.*;
@@ -66,8 +67,16 @@ public class RoleRepositoryImpl<T extends Role> implements RoleRepository<T> {
     }
 
     @Override
-    public Role getRoleByUserId(Long id) {
-        return null;
+    public Role getRoleByUserId(Long userId) {
+        log.info("Fetching role for user id: {}", userId);
+        try {
+            return jdbc.queryForObject(SELECT_ROLE_BY_ID_QUERY, of("id", userId), new RoleRowMapper());
+        } catch (EmptyResultDataAccessException exception) {
+            throw new ApiException("No role found by name: " + ROLE_USER.name());
+        } catch (Exception exception) {
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
     }
 
     @Override

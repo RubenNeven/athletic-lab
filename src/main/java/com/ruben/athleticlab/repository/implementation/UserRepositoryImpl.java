@@ -2,9 +2,11 @@ package com.ruben.athleticlab.repository.implementation;
 
 import com.ruben.athleticlab.domain.Role;
 import com.ruben.athleticlab.domain.User;
+import com.ruben.athleticlab.domain.UserPrincipal;
 import com.ruben.athleticlab.exception.ApiException;
 import com.ruben.athleticlab.repository.RoleRepository;
 import com.ruben.athleticlab.repository.UserRepository;
+import com.ruben.athleticlab.rowmapper.UserRowMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -13,6 +15,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -31,7 +36,7 @@ import static java.util.Objects.*;
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class UserRepositoryImpl implements UserRepository<User> {
+public class UserRepositoryImpl implements UserRepository<User>, UserDetailsService {
 
 
     private final NamedParameterJdbcTemplate jdbc;
@@ -85,6 +90,8 @@ public class UserRepositoryImpl implements UserRepository<User> {
         return false;
     }
 
+
+
     private Integer getEmailCount(String email) {
         return jdbc.queryForObject(COUNT_USER_EMAIL_QUERY, of("email", email), Integer.class);
     }
@@ -99,5 +106,30 @@ public class UserRepositoryImpl implements UserRepository<User> {
 
     private String getVerificationUrl(String key, String type) {
         return ServletUriComponentsBuilder.fromCurrentContextPath().path("/user/verify/" + type + "/" + key).toUriString();
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = getUserByEmail(email);
+        if (user == null){
+            log.error("User not found in the database");
+            throw new UsernameNotFoundException("User not found in the database");
+        } else {
+            log.info("User found in the database: {}", email);
+            return new UserPrincipal(user, roleRepository.getRoleByUserId(user.getId()).getPermission());
+        }
+    }
+
+    @Override
+    public User getUserByEmail(String email) {
+        try {
+            User user = jdbc.queryForObject(SELECT_USER_BY_EMAIL_QUERY, of("email", email), new UserRowMapper());
+            return user;
+        } catch (EmptyResultDataAccessException exception){
+            throw new ApiException("No user found by email: " + email);
+        } catch (Exception exception){
+            log.error(exception.getMessage());
+            throw new ApiException("An error occured. Please try again.");
+        }
     }
 }
