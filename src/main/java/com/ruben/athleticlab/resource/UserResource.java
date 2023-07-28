@@ -3,20 +3,17 @@ package com.ruben.athleticlab.resource;
 
 import com.ruben.athleticlab.domain.HttpResponse;
 import com.ruben.athleticlab.domain.User;
+import com.ruben.athleticlab.domain.UserPrincipal;
 import com.ruben.athleticlab.dto.UserDTO;
 import com.ruben.athleticlab.form.LoginForm;
+import com.ruben.athleticlab.provider.TokenProvider;
 import com.ruben.athleticlab.service.UserService;
+import com.ruben.athleticlab.service.RoleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -34,21 +31,15 @@ import static org.springframework.http.HttpStatus.OK;
 public class UserResource {
 
     private final UserService userService;
-    private final AuthenticationManager authenticationManager;
+    private final RoleService roleService;
+    private final TokenProvider tokenProvider;
+
 
     @PostMapping("/login")
     public ResponseEntity<HttpResponse> login(@RequestBody @Valid LoginForm loginForm){
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginForm.getEmail(), loginForm.getPassword()));
         UserDTO userDTO = userService.getUserByEmail(loginForm.getEmail());
-        log.info(userDTO.getFirstName());
-        return ResponseEntity.ok().body(
-                HttpResponse.builder()
-                        .timeStamp(now().toString())
-                        .data(of("user", userDTO))
-                        .message("Login Success")
-                        .status(OK)
-                        .statusCode(OK.value())
-                        .build());
+        return userDTO.isUsingMfa() ? sendVerificationCode(userDTO) : sendResponse(userDTO);
+
     }
 
     @PostMapping("/register")
@@ -66,5 +57,34 @@ public class UserResource {
 
     private URI getUri(){
         return URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/user/get/<userId>").toUriString());
+    }
+
+    private ResponseEntity<HttpResponse> sendResponse(UserDTO userDTO){
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(of("user", userDTO,
+                                "access_token", tokenProvider.createAccessToken(getUserPrincipal(userDTO)),
+                                "refresh_token", tokenProvider.createRefreshToken(getUserPrincipal(userDTO))))
+                        .message("Login Success")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
+    private UserPrincipal getUserPrincipal(UserDTO userDTO) {
+        return new UserPrincipal(userService.getUser(userDTO.getEmail()), roleService.getRoleByUserId(userDTO.getId()).getPermission());
+    }
+
+    private ResponseEntity<HttpResponse> sendVerificationCode(UserDTO userDTO){
+        userService.sendVerificationCode(userDTO);
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(of("user", userDTO))
+                        .message("Verification code sent")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
     }
 }

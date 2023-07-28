@@ -5,3 +5,9 @@ spring:
 application:
   title: Athletic Lab
   version: 1.0.0
+
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
