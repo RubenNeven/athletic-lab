@@ -21,12 +21,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDTO createUser(User user) {
-        return fromUser(userRepository.create(user));
+        return mapToUserDTO(userRepository.create(user));
     }
 
     @Override
     public UserDTO getUserByEmail(String email) {
-        return fromUser(userRepository.getUserByEmail(email));
+        return mapToUserDTO(userRepository.getUserByEmail(email));
     }
 
     @Override
@@ -34,10 +34,6 @@ public class UserServiceImpl implements UserService {
         userRepository.sendVerificationCode(userDTO);
     }
 
-    @Override
-    public User getUser(String email) {
-        return userRepository.getUserByEmail(email);
-    }
 
     @Override
     public UserDTO verifyCode(String email, String code) {

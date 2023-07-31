@@ -7,8 +7,8 @@ import com.ruben.athleticlab.domain.UserPrincipal;
 import com.ruben.athleticlab.dto.UserDTO;
 import com.ruben.athleticlab.form.LoginForm;
 import com.ruben.athleticlab.provider.TokenProvider;
-import com.ruben.athleticlab.service.UserService;
 import com.ruben.athleticlab.service.RoleService;
+import com.ruben.athleticlab.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +18,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 
+import static com.ruben.athleticlab.dtomapper.UserDTOMapper.toUser;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
 import static org.springframework.http.HttpStatus.CREATED;
@@ -87,7 +88,7 @@ public class UserResource {
     }
 
     private UserPrincipal getUserPrincipal(UserDTO userDTO) {
-        return new UserPrincipal(userService.getUser(userDTO.getEmail()), roleService.getRoleByUserId(userDTO.getId()).getPermission());
+        return new UserPrincipal(toUser(userService.getUserByEmail(userDTO.getEmail())), roleService.getRoleByUserId(userDTO.getId()).getPermission());
     }
 
     private ResponseEntity<HttpResponse> sendVerificationCode(UserDTO userDTO){

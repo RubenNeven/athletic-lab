@@ -1,10 +1,14 @@
 package com.ruben.athleticlab.dto;
 
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
+
+@Setter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserDTO {
 
     private Long id;
