@@ -31,6 +31,7 @@ import static com.ruben.athleticlab.utils.ExceptionUtils.processError;
 import static com.ruben.athleticlab.utils.UserUtils.getLoggedInUser;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.security.authentication.UsernamePasswordAuthenticationToken.unauthenticated;
 
@@ -49,6 +50,8 @@ public class UserResource {
     private final HttpServletRequest request;
     private final HttpServletResponse response;
 
+    private static final String TOKEN_PREFIX = "Bearer ";
+
 
     @PostMapping("/login")
     public ResponseEntity<HttpResponse> login(@RequestBody @Valid LoginForm loginForm) {
@@ -57,16 +60,16 @@ public class UserResource {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user){
+    public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user) {
         UserDTO userDTO = userService.createUser(user);
         return ResponseEntity.created(getUri()).body(
-            HttpResponse.builder()
-                    .timeStamp(now().toString())
-                    .data(of("user", userDTO))
-                    .message("User Created")
-                    .status(CREATED)
-                    .statusCode(CREATED.value())
-                    .build());
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(of("user", userDTO))
+                        .message("User Created")
+                        .status(CREATED)
+                        .statusCode(CREATED.value())
+                        .build());
     }
 
 
@@ -145,12 +148,53 @@ public class UserResource {
                         .build());
     }
 
+    @GetMapping("/verify/account/{key}")
+    public ResponseEntity<HttpResponse> verifyAccount(@PathVariable("key") String key) {
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .message(userService.verifyAccountKey(key).isEnabled() ? "Account already verified" : "Account verified")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
 
-    private URI getUri(){
+    @GetMapping("/refresh/token/")
+    public ResponseEntity<HttpResponse> refreshToken(HttpServletRequest request) {
+        if (isHeaderAndTokenValid(request)) {
+            String token = request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length());
+            UserDTO user = userService.getUserByEmail(tokenProvider.getSubject(token, request));
+            return ResponseEntity.ok().body(
+                    HttpResponse.builder()
+                            .timeStamp(now().toString())
+                            .data(of("user", user, "access_token", tokenProvider.createAccessToken(getUserPrincipal(user)), "refresh_token", token))
+                            .message("Token refresh")
+                            .status(OK)
+                            .statusCode(OK.value())
+                            .build());
+        }
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .reason("Refresh token missing or invalid")
+                        .developerMessage("Refresh token missing or invalid")
+                        .status(BAD_REQUEST)
+                        .statusCode(BAD_REQUEST.value())
+                        .build());
+    }
+
+    private boolean isHeaderAndTokenValid(HttpServletRequest request) {
+        return request.getHeader(AUTHORIZATION) != null
+                &&  request.getHeader(AUTHORIZATION).startsWith(TOKEN_PREFIX) && tokenProvider.isTokenValid(tokenProvider.getSubject(request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length()), request),
+                request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length())
+        );
+    }
+
+    private URI getUri() {
         return URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/user/get/<userId>").toUriString());
     }
 
-    private ResponseEntity<HttpResponse> sendResponse(UserDTO userDTO){
+    private ResponseEntity<HttpResponse> sendResponse(UserDTO userDTO) {
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
@@ -162,11 +206,12 @@ public class UserResource {
                         .statusCode(OK.value())
                         .build());
     }
-        private UserPrincipal getUserPrincipal(UserDTO user) {
+
+    private UserPrincipal getUserPrincipal(UserDTO user) {
         return new UserPrincipal(toUser(userService.getUserByEmail(user.getEmail())), roleService.getRoleByUserId(user.getId()));
     }
 
-    private ResponseEntity<HttpResponse> sendVerificationCode(UserDTO userDTO){
+    private ResponseEntity<HttpResponse> sendVerificationCode(UserDTO userDTO) {
         userService.sendVerificationCode(userDTO);
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
@@ -181,17 +226,17 @@ public class UserResource {
     private UserDTO authenticate(String email, String password) {
         UserDTO userByEmail = userService.getUserByEmail(email);
         try {
-            if(null != userByEmail) {
+            if (null != userByEmail) {
                 publisher.publishEvent(new NewUserEvent(email, LOGIN_ATTEMPT));
             }
             Authentication authentication = authenticationManager.authenticate(unauthenticated(email, password));
             UserDTO loggedInUser = getLoggedInUser(authentication);
-            if(!loggedInUser.isUsingMfa()) {
+            if (!loggedInUser.isUsingMfa()) {
                 publisher.publishEvent(new NewUserEvent(email, LOGIN_ATTEMPT_SUCCESS));
             }
             return loggedInUser;
         } catch (Exception exception) {
-            if(null != userByEmail) {
+            if (null != userByEmail) {
                 publisher.publishEvent(new NewUserEvent(email, LOGIN_ATTEMPT_FAILURE));
             }
             processError(request, response, exception);
