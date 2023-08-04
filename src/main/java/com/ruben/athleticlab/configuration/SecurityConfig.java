@@ -32,11 +32,11 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final CustomAuthorizationFilter customAuthorizationFilter;
 
-    private static final String[] PUBLIC_URLS = { "/user/login/**" , "/user/register/**", "/user/verify/code/**", "/user/resetpassword/**", "/user/verify/password/**",  "/user/verify/account/**", "user/refresh/token/** "};
+    private static final String[] PUBLIC_URLS = { "/user/login/**" , "/user/register/**", "/user/verify/code/**", "/user/resetpassword/**", "/user/verify/password/**",  "/user/verify/account/**", "user/refresh/token/**"};
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable().cors().disable();
+        http.csrf().disable().cors();
         http.sessionManagement().sessionCreationPolicy(STATELESS);
         http.authorizeHttpRequests().requestMatchers(PUBLIC_URLS).permitAll();
         http.authorizeHttpRequests().requestMatchers(DELETE, "/user/delete/**").hasAnyAuthority("DELETE:USER");

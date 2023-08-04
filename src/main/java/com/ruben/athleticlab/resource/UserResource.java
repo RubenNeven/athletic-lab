@@ -8,6 +8,7 @@ import com.ruben.athleticlab.dto.UserDTO;
 import com.ruben.athleticlab.event.NewUserEvent;
 import com.ruben.athleticlab.exception.ApiException;
 import com.ruben.athleticlab.form.LoginForm;
+import com.ruben.athleticlab.form.UpdateForm;
 import com.ruben.athleticlab.provider.TokenProvider;
 import com.ruben.athleticlab.service.RoleService;
 import com.ruben.athleticlab.service.UserService;
@@ -24,10 +25,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 import static com.ruben.athleticlab.dtomapper.UserDTOMapper.toUser;
 import static com.ruben.athleticlab.enumeration.EventType.*;
 import static com.ruben.athleticlab.utils.ExceptionUtils.processError;
+import static com.ruben.athleticlab.utils.UserUtils.getAuthenticatedUser;
 import static com.ruben.athleticlab.utils.UserUtils.getLoggedInUser;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
@@ -61,12 +64,12 @@ public class UserResource {
 
     @PostMapping("/register")
     public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user) {
-        UserDTO userDTO = userService.createUser(user);
+        UserDTO userDto = userService.createUser(user);
         return ResponseEntity.created(getUri()).body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(of("user", userDTO))
-                        .message("User Created")
+                        .data(of("user", userDto))
+                        .message("User created")
                         .status(CREATED)
                         .statusCode(CREATED.value())
                         .build());
@@ -75,12 +78,25 @@ public class UserResource {
 
     @GetMapping("/profile")
     public ResponseEntity<HttpResponse> getProfile(Authentication authentication) {
-        UserDTO user = userService.getUserByEmail(authentication.getName());
+        UserDTO user = userService.getUserByEmail(getAuthenticatedUser(authentication).getEmail());
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
                         .data(of("user", user))
                         .message("Profile retrieved")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+    @PatchMapping("/update")
+    public ResponseEntity<HttpResponse> updateUser(@RequestBody @Valid UpdateForm user) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(3);
+        UserDTO updatedUser = userService.updateUserDetails(user);
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(of("user", updatedUser))
+                        .message("User updated")
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
@@ -159,28 +175,30 @@ public class UserResource {
                         .build());
     }
 
-    @GetMapping("/refresh/token/")
+    @GetMapping("/refresh/token")
     public ResponseEntity<HttpResponse> refreshToken(HttpServletRequest request) {
-        if (isHeaderAndTokenValid(request)) {
+        if(isHeaderAndTokenValid(request)) {
             String token = request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length());
-            UserDTO user = userService.getUserByEmail(tokenProvider.getSubject(token, request));
+            UserDTO user = userService.getUserById(tokenProvider.getSubject(token, request));
             return ResponseEntity.ok().body(
                     HttpResponse.builder()
                             .timeStamp(now().toString())
-                            .data(of("user", user, "access_token", tokenProvider.createAccessToken(getUserPrincipal(user)), "refresh_token", token))
-                            .message("Token refresh")
+                            .data(of("user", user, "access_token", tokenProvider.createAccessToken(getUserPrincipal(user))
+                                    , "refresh_token", token))
+                            .message("Token refreshed")
                             .status(OK)
                             .statusCode(OK.value())
                             .build());
+        } else {
+            return ResponseEntity.badRequest().body(
+                    HttpResponse.builder()
+                            .timeStamp(now().toString())
+                            .reason("Refresh Token missing or invalid")
+                            .developerMessage("Refresh Token missing or invalid")
+                            .status(BAD_REQUEST)
+                            .statusCode(BAD_REQUEST.value())
+                            .build());
         }
-        return ResponseEntity.ok().body(
-                HttpResponse.builder()
-                        .timeStamp(now().toString())
-                        .reason("Refresh token missing or invalid")
-                        .developerMessage("Refresh token missing or invalid")
-                        .status(BAD_REQUEST)
-                        .statusCode(BAD_REQUEST.value())
-                        .build());
     }
 
     private boolean isHeaderAndTokenValid(HttpServletRequest request) {

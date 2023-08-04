@@ -2,6 +2,7 @@ package com.ruben.athleticlab.repository;
 
 import com.ruben.athleticlab.domain.User;
 import com.ruben.athleticlab.dto.UserDTO;
+import com.ruben.athleticlab.form.UpdateForm;
 
 import java.util.Collection;
 
@@ -33,4 +34,6 @@ public interface UserRepository<T extends User> {
     void renewPassword(String key, String password, String confirmPassword);
 
     T verifyAccountKey(String key);
+
+    T updateUserDetails(UpdateForm user);
 }

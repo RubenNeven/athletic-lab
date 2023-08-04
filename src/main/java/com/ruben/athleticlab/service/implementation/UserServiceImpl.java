@@ -3,6 +3,7 @@ package com.ruben.athleticlab.service.implementation;
 import com.ruben.athleticlab.domain.Role;
 import com.ruben.athleticlab.domain.User;
 import com.ruben.athleticlab.dto.UserDTO;
+import com.ruben.athleticlab.form.UpdateForm;
 import com.ruben.athleticlab.repository.RoleRepository;
 import com.ruben.athleticlab.repository.UserRepository;
 import com.ruben.athleticlab.service.UserService;
@@ -58,6 +59,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO verifyAccountKey(String key) {
         return mapToUserDTO(userRepository.verifyAccountKey(key));
+    }
+
+    @Override
+    public UserDTO getUserById(Long userId) {
+        return mapToUserDTO(userRepository.get(userId));
+    }
+
+    @Override
+    public UserDTO updateUserDetails(UpdateForm user) {
+        return mapToUserDTO(userRepository.updateUserDetails(user));
     }
 
     private UserDTO mapToUserDTO(User user) {

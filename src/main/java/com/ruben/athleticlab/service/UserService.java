@@ -2,6 +2,7 @@ package com.ruben.athleticlab.service;
 
 import com.ruben.athleticlab.domain.User;
 import com.ruben.athleticlab.dto.UserDTO;
+import com.ruben.athleticlab.form.UpdateForm;
 
 public interface UserService {
 
@@ -20,4 +21,9 @@ public interface UserService {
     void renewPassword(String key, String password, String confirmPassword);
 
     UserDTO verifyAccountKey(String key);
+
+    UserDTO getUserById(Long subject);
+
+    UserDTO updateUserDetails(UpdateForm user);
+
 }

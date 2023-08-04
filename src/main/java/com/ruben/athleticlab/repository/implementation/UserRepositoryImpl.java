@@ -6,6 +6,7 @@ import com.ruben.athleticlab.domain.UserPrincipal;
 import com.ruben.athleticlab.dto.UserDTO;
 import com.ruben.athleticlab.enumeration.VerificationType;
 import com.ruben.athleticlab.exception.ApiException;
+import com.ruben.athleticlab.form.UpdateForm;
 import com.ruben.athleticlab.repository.RoleRepository;
 import com.ruben.athleticlab.repository.UserRepository;
 import com.ruben.athleticlab.rowmapper.UserRowMapper;
@@ -51,10 +52,7 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
 
     @Override
     public User create(User user) {
-        // Check the email is unique
-        if (getEmailCount(user.getEmail().trim().toLowerCase()) > 0)
-            throw new ApiException("Email already in use. Please use a different email and try again.");
-        // Save new user
+        if(getEmailCount(user.getEmail().trim().toLowerCase()) > 0) throw new ApiException("Email already in use. Please use a different email and try again.");
         try {
             KeyHolder holder = new GeneratedKeyHolder();
             SqlParameterSource parameters = getSqlParameterSource(user);
@@ -63,12 +61,13 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
             roleRepository.addRoleToUser(user.getId(), ROLE_USER.name());
             String verificationUrl = getVerificationUrl(UUID.randomUUID().toString(), ACCOUNT.getType());
             jdbc.update(INSERT_ACCOUNT_VERIFICATION_URL_QUERY, of("userId", user.getId(), "url", verificationUrl));
-            // TODO emailService.sendVerificationUrl(user.getFirstName(), user.getEmail(), verificationUrl, ACCOUNT);
+            //emailService.sendVerificationUrl(user.getFirstName(), user.getEmail(), verificationUrl, ACCOUNT);
             user.setEnabled(false);
             user.setNotLocked(true);
             return user;
         } catch (Exception exception) {
-            throw new ApiException("An error occurred. Please try again");
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
         }
     }
 
@@ -80,7 +79,27 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
 
     @Override
     public User get(Long id) {
-        return null;
+        try {
+            return jdbc.queryForObject(SELECT_USER_BY_ID_QUERY, of("id", id), new UserRowMapper());
+        } catch (EmptyResultDataAccessException exception) {
+            throw new ApiException("No User found by id: " + id);
+        } catch (Exception exception) {
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
+    }
+
+    @Override
+    public User updateUserDetails(UpdateForm user) {
+        try {
+            jdbc.update(UPDATE_USER_DETAILS_QUERY, getUserDetailsSqlParameterSource(user));
+            return get(user.getId());
+        }catch (EmptyResultDataAccessException exception) {
+            throw new ApiException("No User found by id: " + user.getId());
+        } catch (Exception exception) {
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
     }
 
     @Override
@@ -246,6 +265,18 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         } catch (Exception exception) {
             throw new ApiException("An error occurred. Please try again.");
         }
+    }
+
+    private SqlParameterSource getUserDetailsSqlParameterSource(UpdateForm user) {
+        return new MapSqlParameterSource()
+                .addValue("id", user.getId())
+                .addValue("firstName", user.getFirstName())
+                .addValue("lastName", user.getLastName())
+                .addValue("email", user.getEmail())
+                .addValue("phone", user.getPhone())
+                .addValue("address", user.getAddress())
+                .addValue("title", user.getTitle())
+                .addValue("bio", user.getBio());
     }
 
 }
